@@ -20,10 +20,12 @@ model.to(device)
 model.eval()
 
 # apply corruption to the input images (e.g., adding noise or masking random pixels)
-clean_transform = transforms.ToTensor()
+clean_transform = transforms.Compose([
+    transforms.ToTensor(),
+])
 corrupt_transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.GaussianBlur(kernel_size=5, sigma=(0.25, 2.0)),
+    transforms.GaussianBlur(kernel_size=5, sigma=(0.35, 2.0)),
 ])
 
 clean_test_set = get_datasets("mnist", clean_transform)[1]

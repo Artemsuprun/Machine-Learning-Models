@@ -39,8 +39,8 @@ def create_mnist_loader(train_dataset, test_dataset, batch_size=128, shuffle=Tru
     return train_loader, test_loader
 
 
-def get_mnist_loader(batch_size=128, shuffle=True):
-    train_set, test_set = get_mnist_dataset()
+def get_mnist_loader(batch_size=128, shuffle=True, transform=None):
+    train_set, test_set = get_mnist_dataset(transform)
 
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=shuffle)
     test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)

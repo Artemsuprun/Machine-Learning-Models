@@ -10,7 +10,10 @@ env/
 !checkpoints/
 checkpoints/*
 !checkpoints/README.md
+!checkpoints/autoencoder_mnist.pth
 
 !data/
 data/*
 !data/README.md
+
+current.txt

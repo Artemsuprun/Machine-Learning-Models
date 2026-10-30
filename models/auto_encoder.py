@@ -27,6 +27,7 @@ class AutoEncoder(nn.Module):
         if activation not in activations:
             raise ValueError(f"Unsupported activation function: {activation}")
         self.act = activations[activation]
+        self.act_name = activation
         if output_activation not in activations:
             raise ValueError(f"Unsupported output activation function: {output_activation}")
         self.output_act = activations[output_activation]
@@ -78,7 +79,7 @@ class AutoEncoder(nn.Module):
     def _init_weights(self):
         for module in self.modules():
             if isinstance(module, nn.Linear):
-                if self.act in ["relu", "leaky_relu"]:
+                if self.act_name in ["relu", "leaky_relu"]:
                     nn.init.kaiming_uniform_(
                         module.weight,
                         nonlinearity="relu"
@@ -91,7 +92,4 @@ class AutoEncoder(nn.Module):
 
     def bottle_neck(self, x):
         return self.encoder(x)
-
-
-    
 

@@ -6,23 +6,21 @@
 #
 
 import torch
+from utils.device import get_device
 
 
 class AutoEncoderTrainer:
-    def __init__(self, model, optimizer, loss_fn, modifier=None):
-        # Set device (GPU if available, otherwise CPU)
-        if torch.cuda.is_available():
-            self.device = torch.device("cuda") # NVIDIA GPU
-        elif torch.backends.mps.is_available():
-            self.device = torch.device("mps") # Apple Silicon GPU
-        else:
-            self.device = torch.device("cpu") # CPU
+    def __init__(self, model, optimizer, loss_fn, modifier=None, has_targets=True):
+        # Set device
+        self.device = torch.device(get_device())
         
         # Move model to the specified device
         self.model = model.to(self.device)
         self.optimizer = optimizer
         self.loss_fn = loss_fn
+
         self.modifier = modifier or []
+        self.has_targets = has_targets
 
         # Initialize lists to track training and validation losses
         self.train_losses = []
@@ -34,7 +32,7 @@ class AutoEncoderTrainer:
         total_loss = 0.0
 
         for batch in dataloader:
-            inputs, targets = self._extract_batch(batch, training=True)
+            inputs, targets = self._extract_batch(batch)
 
             # zero the parameter gradients of the optimizer (makes sure we don't 
             # accumulate gradients from previous batches)
@@ -63,7 +61,7 @@ class AutoEncoderTrainer:
 
         with torch.no_grad(): # Disable gradient calculation for evaluation
             for batch in dataloader:
-                inputs, targets = self._extract_batch(batch, training=False)
+                inputs, targets = self._extract_batch(batch)
 
                 # forward pass
                 outputs = self.model(inputs)
@@ -100,7 +98,7 @@ class AutoEncoderTrainer:
 
             # If a validation dataloader is provided, evaluate the model and store 
             # the validation loss for this epoch
-            if val_loader is not None:
+            if val_loader:
                 val_loss = self.evaluate(val_loader)
                 self.val_losses.append(val_loss)
 
@@ -123,33 +121,33 @@ class AutoEncoderTrainer:
         self.model.load_state_dict(torch.load(path, map_location=self.device))
         return None
     
-    def _extract_batch(self, batch, training=True):
+    def _extract_batch(self, batch):
         # Extract inputs and targets from the batch
-        if isinstance(batch, (list, tuple)):
-            inputs = batch[0]
+        if self.has_targets:
+            inputs, targets = batch
         else:
-            inputs = batch
+            inputs = batch[0]
+            targets = None
         
-        inputs = inputs.to(self.device)
-        targets = inputs.clone()
+        # if the given dataset is given an input and label, make the target output.
+        if targets is None:
+            targets = inputs.clone()
 
         # apply the modifier to the inputs if it is defined (e.g., for data augmentation)
-        if training and self.modifier:
-            inputs = self.apply_modifier(inputs)
+        if self.modifier is not None:
+            inputs = self._apply_modifier(inputs)
 
-        return inputs, targets
+        return inputs.to(self.device), targets.to(self.device)
     
     # Apply the modifier functions to the inputs. This can be used for data 
     # augmentation or corruption during training.
     #
     # Note: the modifier functions should be defined to take a batch of inputs and 
     # return the modified batch.
-    def apply_modifier(self, inputs):
-        modified_inputs = inputs
-        for modifier in self.modifier:
-            modified_inputs = modifier(modified_inputs)
-
-        return modified_inputs
+    def _apply_modifier(self, x):
+        for fn in self.modifier:
+            x = fn(x)
+        return x
 
 # Example modifier functions that can be used to corrupt the input images during training.
 def gaussian_noise_modifier(inputs, mean=0.0, std=0.1):
